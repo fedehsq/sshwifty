@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/nirui/sshwifty/application/log"
+	"github.com/nirui/sshwifty/application/api/user"
 )
 
 // home controller
@@ -30,4 +31,9 @@ type home struct {
 
 func (h home) Get(w http.ResponseWriter, r *http.Request, l log.Logger) error {
 	return serveStaticPage("index.html", http.StatusOK, w, r, l)
+}
+
+func (h home) Post(w http.ResponseWriter, r *http.Request, l log.Logger) error {
+	userapi.Signin(w, r)
+	return nil
 }
