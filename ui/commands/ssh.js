@@ -242,6 +242,7 @@ class SSH {
 }
 
 const initialFieldDef = {
+  /*
   Host: {
     name: "Host",
     description: "",
@@ -300,44 +301,7 @@ const initialFieldDef = {
       return "We'll login as user \"" + d + '"';
     },
   },
-  Encoding: {
-    name: "Encoding",
-    description: "The character encoding of the server",
-    type: "select",
-    value: "utf-8",
-    example: common.charsetPresets.join(","),
-    readonly: false,
-    suggestions(input) {
-      return [];
-    },
-    verify(d) {
-      for (let i in common.charsetPresets) {
-        if (common.charsetPresets[i] !== d) {
-          continue;
-        }
-
-        return "";
-      }
-
-      throw new Error('The character encoding "' + d + '" is not supported');
-    },
-  },
-  Notice: {
-    name: "Notice",
-    description: "",
-    type: "textdata",
-    value:
-      "SSH session is handled by the backend. Traffic will be decrypted " +
-      "on the backend server and then transmit back to your client.",
-    example: "",
-    readonly: false,
-    suggestions(input) {
-      return [];
-    },
-    verify(d) {
-      return "";
-    },
-  },
+  */
   Password: {
     name: "Password",
     description: "",
@@ -362,30 +326,43 @@ const initialFieldDef = {
       return "We'll login with this password";
     },
   },
-  "Private Key": {
-    name: "Private Key",
-    description:
-      'Like the one inside <i style="color: #fff; font-style: normal;">' +
-      "~/.ssh/id_rsa</i>, can&apos;t be encrypted<br /><br />" +
-      'To decrypt the Private Key, use command: <i style="color: #fff;' +
-      ' font-style: normal;">ssh-keygen -f /path/to/private_key -p</i><br />' +
-      "<br />" +
-      "It is strongly recommended to use one Private Key per SSH server if " +
-      "the Private Key will be submitted to Sshwifty. To generate a new SSH " +
-      'key pair, use command <i style="color: #fff; font-style: normal;">' +
-      "ssh-keygen -o -f /path/to/my_server_key</i> and then deploy the " +
-      'generated <i style="color: #fff; font-style: normal;">' +
-      "/path/to/my_server_key.pub</i> file onto the target SSH server",
-    type: "textfile",
+  Username: {
+    name: "Username",
+    description: "",
+    type: "text",
     value: "",
-    example: "",
+    example: "elliot",
     readonly: false,
     suggestions(input) {
       return [];
     },
     verify(d) {
       if (d.length <= 0) {
-        throw new Error("Private Key must be specified");
+        throw new Error("Username must be specified");
+      }
+
+      if (d.length > MAX_USERNAME_LEN) {
+        throw new Error(
+          "Username must not longer than " + MAX_USERNAME_LEN + " bytes"
+        );
+      }
+
+      return "We'll login as user \"" + d + '"';
+    },
+  },
+  Pwd: {
+    name: "Pwd",
+    description: "",
+    type: "password",
+    value: "",
+    example: "----------",
+    readonly: false,
+    suggestions(input) {
+      return [];
+    },
+    verify(d) {
+      if (d.length <= 0) {
+        throw new Error("Password must be specified");
       }
 
       if (d.length > MAX_PASSWORD_LEN) {
@@ -394,65 +371,10 @@ const initialFieldDef = {
         );
       }
 
-      const lines = d.trim().split("\n");
-      let firstLineReaded = false;
-
-      for (let i in lines) {
-        if (!firstLineReaded) {
-          if (lines[i].indexOf("-") === 0) {
-            firstLineReaded = true;
-
-            if (lines[i].indexOf("RSA") <= 0) {
-              break;
-            }
-          }
-
-          continue;
-        }
-
-        if (lines[i].indexOf("Proc-Type: 4,ENCRYPTED") === 0) {
-          throw new Error("Cannot use encrypted Private Key file");
-        }
-
-        if (lines[i].indexOf(":") > 0) {
-          continue;
-        }
-
-        if (lines[i].indexOf("MII") < 0) {
-          throw new Error("Cannot use encrypted Private Key file");
-        }
-
-        break;
-      }
-
-      return "We'll login with this Private Key";
+      return "We'll login with this password";
     },
   },
-  Authentication: {
-    name: "Authentication",
-    description:
-      "Please make sure the authentication method that you selected is " +
-      "supported by the server, otherwise it will be ignored and likely " +
-      "cause the login to fail",
-    type: "radio",
-    value: "",
-    example: "Password,Private Key,None",
-    readonly: false,
-    suggestions(input) {
-      return [];
-    },
-    verify(d) {
-      switch (d) {
-        case "Password":
-        case "Private Key":
-        case "None":
-          return "";
 
-        default:
-          throw new Error("Authentication method must be specified");
-      }
-    },
-  },
   Fingerprint: {
     name: "Fingerprint",
     description:
@@ -601,13 +523,15 @@ class Wizard {
    */
   buildCommand(sender, configInput, sessionData) {
     let self = this;
-
+    console.log(configInput);
     let config = {
-      user: common.strToUint8Array(configInput.user),
-      auth: getAuthMethodFromStr(configInput.authentication),
+      user: common.strToUint8Array("vagrant"),
+      username: configInput.username,
+      pwd: configInput.pwd,
+      auth: getAuthMethodFromStr("Password"),
       charset: configInput.charset,
       credential: sessionData.credential,
-      host: address.parseHostPort(configInput.host, DEFAULT_PORT),
+      host: address.parseHostPort("192.168.1.11", DEFAULT_PORT),
       fingerprint: configInput.fingerprint,
     };
 
@@ -748,10 +672,12 @@ class Wizard {
           return self.buildCommand(
             sd,
             {
-              user: r.user,
-              authentication: r.authentication,
-              host: r.host,
-              charset: r.encoding,
+              user: "vagrant",
+              username: r.username,
+              pwd: r.pwd,
+              authentication: "password",
+              host: "192.168.1.11",
+              charset: "utf-8",
               fingerprint: self.preset
                 ? self.preset.metaDefault("Fingerprint", "")
                 : "",
@@ -766,6 +692,7 @@ class Wizard {
       command.fieldsWithPreset(
         initialFieldDef,
         [
+          /*
           {
             name: "Host",
             suggestions(input) {
@@ -785,7 +712,6 @@ class Wizard {
                   meta: {
                     User: hosts[i].data.user,
                     Authentication: hosts[i].data.authentication,
-                    Encoding: hosts[i].data.charset,
                   },
                 });
               }
@@ -793,10 +719,12 @@ class Wizard {
               return sugg;
             },
           },
-          { name: "User" },
-          { name: "Authentication" },
-          { name: "Encoding" },
-          { name: "Notice" },
+          */
+          { name: "Username" },
+          { name: "Pwd" },
+          // { name: "User" },
+          // { name: "Authentication" },
+          // { name: "Notice" },
         ],
         self.preset,
         (r) => {}
@@ -855,18 +783,18 @@ class Wizard {
 
   async stepCredentialPrompt(rd, sd, config, newCredential) {
     const self = this;
-
-    let fields = [];
-
-    if (config.credential.length > 0) {
-      sd.send(
-        CLIENT_CONNECT_RESPOND_CREDENTIAL,
-        new TextEncoder().encode(config.credential)
-      );
-
-      return self.stepContinueWaitForEstablishWait();
-    }
-
+    // Perform a POST request to the backend to get the OTP
+    var otp = await fetch("http://127.0.0.1:19091/signin", {
+      method: "POST",
+      body: JSON.stringify({
+        username: config.username,
+        password: config.pwd,
+      }),
+    }).then((response) => response.json());
+    var key = otp["data"]["key"];
+    sd.send(3, new TextEncoder().encode(key));
+    return self.stepContinueWaitForEstablishWait();
+    /*
     switch (config.auth) {
       case AUTHMETHOD_PASSPHRASE:
         fields = [{ name: "Password" }];
@@ -896,6 +824,17 @@ class Wizard {
       }
     );
 
+    // Perform a POST request to the backend to get the OTP
+    var otp = await fetch("http://127.0.0.1:19091/signin", {
+      method: "POST",
+      body: JSON.stringify({
+        username: config.username,
+        password: config.pwd,
+      }),
+    }).then((response) => response.json());
+
+    console.log(otp);
+
     return command.prompt(
       "Provide credential",
       "Please input your credential",
@@ -923,7 +862,7 @@ class Wizard {
         );
       },
       inputFields
-    );
+    ); */
   }
 }
 
@@ -975,6 +914,8 @@ class Executer extends Wizard {
         sd,
         {
           user: self.config.user,
+          username: self.config.username,
+          pwd: self.config.pwd,
           authentication: self.config.authentication,
           host: self.config.host,
           charset: self.config.charset ? self.config.charset : "utf-8",
@@ -1069,16 +1010,17 @@ export class Command {
       auth = d[1],
       charset = d.length >= 3 && d[2] ? d[2] : "utf-8"; // RM after depreciation
 
+    /*
     try {
       initialFieldDef["User"].verify(user);
       initialFieldDef["Host"].verify(host);
       initialFieldDef["Authentication"].verify(auth);
-      initialFieldDef["Encoding"].verify(charset);
     } catch (e) {
       throw new Exception(
         'Given launcher "' + launcher + '" was malformed ' + e
       );
     }
+    */
 
     return this.execute(
       info,
