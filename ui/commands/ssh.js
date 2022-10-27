@@ -523,7 +523,6 @@ class Wizard {
    */
   buildCommand(sender, configInput, sessionData) {
     let self = this;
-    console.log(configInput);
     let config = {
       user: common.strToUint8Array("vagrant"),
       username: configInput.username,
@@ -691,41 +690,7 @@ class Wizard {
       () => {},
       command.fieldsWithPreset(
         initialFieldDef,
-        [
-          /*
-          {
-            name: "Host",
-            suggestions(input) {
-              const hosts = self.history.search(
-                "SSH",
-                "host",
-                input,
-                HostMaxSearchResults
-              );
-
-              let sugg = [];
-
-              for (let i = 0; i < hosts.length; i++) {
-                sugg.push({
-                  title: hosts[i].title,
-                  value: hosts[i].data.host,
-                  meta: {
-                    User: hosts[i].data.user,
-                    Authentication: hosts[i].data.authentication,
-                  },
-                });
-              }
-
-              return sugg;
-            },
-          },
-          */
-          { name: "Username" },
-          { name: "Pwd" },
-          // { name: "User" },
-          // { name: "Authentication" },
-          // { name: "Notice" },
-        ],
+        [{ name: "Username" }, { name: "Pwd" }],
         self.preset,
         (r) => {}
       )
@@ -783,86 +748,46 @@ class Wizard {
 
   async stepCredentialPrompt(rd, sd, config, newCredential) {
     const self = this;
-    // Perform a POST request to the backend to get the OTP
-    var otp = await fetch("http://127.0.0.1:19091/signin", {
+    // Perform a POST request to the backend with the user credential
+    let response = await fetch("http://127.0.0.1:19091/signin", {
       method: "POST",
       body: JSON.stringify({
         username: config.username,
         password: config.pwd,
       }),
-    }).then((response) => response.json());
-    var key = otp["data"]["key"];
-    sd.send(3, new TextEncoder().encode(key));
-    return self.stepContinueWaitForEstablishWait();
-    /*
-    switch (config.auth) {
-      case AUTHMETHOD_PASSPHRASE:
-        fields = [{ name: "Password" }];
-        break;
-
-      case AUTHMETHOD_PRIVATE_KEY:
-        fields = [{ name: "Private Key" }];
-        break;
-
-      default:
-        throw new Exception(
-          'Auth method "' + config.auth + '" was unsupported'
-        );
+    });
+    if (response.status === 200) {
+      let responseBody = await response.json();
+      let otp = responseBody.data.key;
+      sd.send(CLIENT_CONNECT_RESPOND_CREDENTIAL, new TextEncoder().encode(otp));
+      return self.stepContinueWaitForEstablishWait();
+    } else {
+      // Invalid credentials
+      return command.prompt(
+        "Error",
+        "Invalid username or password",
+        "Connect",
+        (r) => {
+          config.username = r.username;
+          config.pwd = r.pwd;
+          self.step.resolve(
+            self.stepCredentialPrompt(rd, sd, config, newCredential)
+          );
+        },
+        () => {
+          // Close the connection
+          sd.send(CLIENT_CONNECT_RESPOND_CREDENTIAL, new Uint8Array([1]));
+        },
+        command.fields(initialFieldDef, [
+          {
+            name: "Username",
+          },
+          {
+            name: "Pwd",
+          },
+        ])
+      );
     }
-
-    let presetCredentialUsed = false;
-    const inputFields = command.fieldsWithPreset(
-      initialFieldDef,
-      fields,
-      self.preset,
-      (r) => {
-        if (r !== fields[0].name) {
-          return;
-        }
-
-        presetCredentialUsed = true;
-      }
-    );
-
-    // Perform a POST request to the backend to get the OTP
-    var otp = await fetch("http://127.0.0.1:19091/signin", {
-      method: "POST",
-      body: JSON.stringify({
-        username: config.username,
-        password: config.pwd,
-      }),
-    }).then((response) => response.json());
-
-    console.log(otp);
-
-    return command.prompt(
-      "Provide credential",
-      "Please input your credential",
-      "Login",
-      (r) => {
-        let vv = r[fields[0].name.toLowerCase()];
-
-        sd.send(
-          CLIENT_CONNECT_RESPOND_CREDENTIAL,
-          new TextEncoder().encode(vv)
-        );
-
-        newCredential(vv, presetCredentialUsed);
-
-        self.step.resolve(self.stepContinueWaitForEstablishWait());
-      },
-      () => {
-        sd.close();
-
-        self.step.resolve(
-          command.wait(
-            "Cancelling login",
-            "Cancelling login request, please wait"
-          )
-        );
-      },
-      inputFields
-    ); */
   }
 }
 
