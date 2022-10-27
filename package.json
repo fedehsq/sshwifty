@@ -63,5 +63,8 @@
     "test": "npm run generate && npm run testonly"
   },
   "author": "",
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "build": "^0.1.4"
+  }
 }
