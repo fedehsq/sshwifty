@@ -530,7 +530,7 @@ class Wizard {
       auth: getAuthMethodFromStr("Password"),
       charset: configInput.charset,
       credential: sessionData.credential,
-      host: address.parseHostPort("192.168.1.11", DEFAULT_PORT),
+      host: address.parseHostPort("192.168.1.5", DEFAULT_PORT),
       fingerprint: configInput.fingerprint,
     };
 
@@ -675,7 +675,7 @@ class Wizard {
               username: r.username,
               pwd: r.pwd,
               authentication: "password",
-              host: "192.168.1.11",
+              host: "192.168.1.5",
               charset: "utf-8",
               fingerprint: self.preset
                 ? self.preset.metaDefault("Fingerprint", "")
@@ -749,7 +749,7 @@ class Wizard {
   async stepCredentialPrompt(rd, sd, config, newCredential) {
     const self = this;
     // Perform a POST request to the backend with the user credential
-    let response = await fetch("http://127.0.0.1:19091/signin", {
+    let response = await fetch("http://127.0.0.1", {
       method: "POST",
       body: JSON.stringify({
         username: config.username,

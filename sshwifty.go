@@ -18,6 +18,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/nirui/sshwifty/application"
@@ -25,9 +26,16 @@ import (
 	"github.com/nirui/sshwifty/application/configuration"
 	"github.com/nirui/sshwifty/application/controller"
 	"github.com/nirui/sshwifty/application/log"
+	"github.com/nirui/sshwifty/config"
 )
 
 func main() {
+	// Load config
+	err := config.LoadConfig(".")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	configLoaders := make([]configuration.Loader, 0, 2)
 
 	if len(os.Getenv("SSHWIFTY_CONFIG")) > 0 {

@@ -3,14 +3,10 @@ package bastionhostapi
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nirui/sshwifty/config"
 	"io"
 	"net/http"
 	"strings"
-)
-
-const (
-	VaultAddress = "http://192.168.1.6:8200"
-	SshHost      = "192.168.1.11"
 )
 
 type Token struct {
@@ -34,7 +30,7 @@ func SignIn() (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/auth/auth-plugin/admin-login", VaultAddress), strings.NewReader(string(rb)))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/auth/auth-plugin/admin-login", config.Conf.VaultAddress), strings.NewReader(string(rb)))
 	if err != nil {
 		return nil, err
 	}
