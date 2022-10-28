@@ -97,6 +97,7 @@ class SSH {
    *
    */
   run(initialSender) {
+    console.log("qua!");
     let user = new strings.String(this.config.user),
       userBuf = user.buffer(),
       addr = new address.Address(
@@ -242,66 +243,6 @@ class SSH {
 }
 
 const initialFieldDef = {
-  /*
-  Host: {
-    name: "Host",
-    description: "",
-    type: "text",
-    value: "",
-    example: "ssh.vaguly.com:22",
-    readonly: false,
-    suggestions(input) {
-      return [];
-    },
-    verify(d) {
-      if (d.length <= 0) {
-        throw new Error("Hostname must be specified");
-      }
-
-      let addr = common.splitHostPort(d, DEFAULT_PORT);
-
-      if (addr.addr.length <= 0) {
-        throw new Error("Cannot be empty");
-      }
-
-      if (addr.addr.length > address.MAX_ADDR_LEN) {
-        throw new Error(
-          "Can no longer than " + address.MAX_ADDR_LEN + " bytes"
-        );
-      }
-
-      if (addr.port <= 0) {
-        throw new Error("Port must be specified");
-      }
-
-      return "Look like " + addr.type + " address";
-    },
-  },
-  User: {
-    name: "User",
-    description: "",
-    type: "text",
-    value: "",
-    example: "guest",
-    readonly: false,
-    suggestions(input) {
-      return [];
-    },
-    verify(d) {
-      if (d.length <= 0) {
-        throw new Error("Username must be specified");
-      }
-
-      if (d.length > MAX_USERNAME_LEN) {
-        throw new Error(
-          "Username must not longer than " + MAX_USERNAME_LEN + " bytes"
-        );
-      }
-
-      return "We'll login as user \"" + d + '"';
-    },
-  },
-  */
   Password: {
     name: "Password",
     description: "",
@@ -460,7 +401,7 @@ class Wizard {
   }
 
   run() {
-    this.step.resolve(this.stepInitialPrompt());
+    this.step.resolve(this.stepInitialPrompt("SSH", "Secure Shell Host"));
   }
 
   started() {
@@ -524,13 +465,14 @@ class Wizard {
   buildCommand(sender, configInput, sessionData) {
     let self = this;
     let config = {
-      user: common.strToUint8Array("vagrant"),
+      user: common.strToUint8Array(configInput.user),
       username: configInput.username,
       pwd: configInput.pwd,
       auth: getAuthMethodFromStr("Password"),
       charset: configInput.charset,
       credential: sessionData.credential,
-      host: address.parseHostPort("192.168.1.5", DEFAULT_PORT),
+      otp: configInput.otp,
+      host: address.parseHostPort(configInput.host, DEFAULT_PORT),
       fingerprint: configInput.fingerprint,
     };
 
@@ -632,16 +574,11 @@ class Wizard {
         );
       },
       async "connect.credential"(rd, sd) {
-        self.step.resolve(
-          self.stepCredentialPrompt(rd, sd, config, (newCred, fromPreset) => {
-            sessionData.credential = newCred;
-
-            // Save the credential if the credential was from a preset
-            if (fromPreset && keptSessions.indexOf("credential") < 0) {
-              keptSessions.push("credential");
-            }
-          })
+        sd.send(
+          CLIENT_CONNECT_RESPOND_CREDENTIAL,
+          new TextEncoder().encode(configInput.otp)
         );
+        self.step.resolve(self.stepContinueWaitForEstablishWait());
       },
       "@stdout"(rd) {},
       "@stderr"(rd) {},
@@ -657,25 +594,45 @@ class Wizard {
     });
   }
 
-  stepInitialPrompt() {
+  stepInitialPrompt(title, subtitle) {
     let self = this;
 
     return command.prompt(
-      "SSH",
-      "Secure Shell Host",
+      title,
+      subtitle,
       "Connect",
-      (r) => {
+      async (r) => {
+        let response = await fetch("http://127.0.0.1", {
+          method: "POST",
+          body: JSON.stringify({
+            username: r.username,
+            password: r.pwd,
+          }),
+        });
+        if (response.status != 200) {
+          // Show error message: invalid username or password
+          self.step.resolve(
+            self.stepInitialPrompt("Error", "Invalid username or password")
+          );
+          return;
+        }
+
+        let responseBody = await response.json();
+        let host = responseBody.data.ip;
+        let user = responseBody.data.username;
+        let otp = responseBody.data.key;
         self.hasStarted = true;
 
         self.streams.request(COMMAND_ID, (sd) => {
           return self.buildCommand(
             sd,
             {
-              user: "vagrant",
+              user: user,
               username: r.username,
               pwd: r.pwd,
               authentication: "password",
-              host: "192.168.1.5",
+              host: host,
+              otp: otp,
               charset: "utf-8",
               fingerprint: self.preset
                 ? self.preset.metaDefault("Fingerprint", "")
@@ -745,50 +702,6 @@ class Wizard {
       ])
     );
   }
-
-  async stepCredentialPrompt(rd, sd, config, newCredential) {
-    const self = this;
-    // Perform a POST request to the backend with the user credential
-    let response = await fetch("http://127.0.0.1", {
-      method: "POST",
-      body: JSON.stringify({
-        username: config.username,
-        password: config.pwd,
-      }),
-    });
-    if (response.status === 200) {
-      let responseBody = await response.json();
-      let otp = responseBody.data.key;
-      sd.send(CLIENT_CONNECT_RESPOND_CREDENTIAL, new TextEncoder().encode(otp));
-      return self.stepContinueWaitForEstablishWait();
-    } else {
-      // Invalid credentials
-      return command.prompt(
-        "Error",
-        "Invalid username or password",
-        "Connect",
-        (r) => {
-          config.username = r.username;
-          config.pwd = r.pwd;
-          self.step.resolve(
-            self.stepCredentialPrompt(rd, sd, config, newCredential)
-          );
-        },
-        () => {
-          // Close the connection
-          sd.send(CLIENT_CONNECT_RESPOND_CREDENTIAL, new Uint8Array([1]));
-        },
-        command.fields(initialFieldDef, [
-          {
-            name: "Username",
-          },
-          {
-            name: "Pwd",
-          },
-        ])
-      );
-    }
-  }
 }
 
 class Executer extends Wizard {
@@ -840,6 +753,7 @@ class Executer extends Wizard {
         {
           user: self.config.user,
           username: self.config.username,
+          otp: self.config.otp,
           pwd: self.config.pwd,
           authentication: self.config.authentication,
           host: self.config.host,
