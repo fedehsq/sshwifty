@@ -97,7 +97,6 @@ class SSH {
    *
    */
   run(initialSender) {
-    console.log("qua!");
     let user = new strings.String(this.config.user),
       userBuf = user.buffer(),
       addr = new address.Address(
@@ -289,6 +288,30 @@ const initialFieldDef = {
       }
 
       return "We'll login as user \"" + d + '"';
+    },
+  },
+  Host: {
+    name: "Host",
+    description: "",
+    type: "text",
+    value: "",
+    example: "192.168.1.10",
+    readonly: false,
+    suggestions(input) {
+      return [];
+    },
+    verify(d) {
+      if (d.length <= 0) {
+        throw new Error("Host must be specified");
+      }
+
+      if (d.length > address.MAX_ADDR_LEN) {
+        throw new Error(
+          "Host must not longer than " + address.MAX_ADDR_LEN + " bytes"
+        );
+      }
+
+      return "We'll login to \"" + d + '"';
     },
   },
   Pwd: {
@@ -607,20 +630,21 @@ class Wizard {
           body: JSON.stringify({
             username: r.username,
             password: r.pwd,
+            host: r.host,
           }),
         });
         if (response.status != 200) {
-          // Show error message: invalid username or password
+          // Show error message: invalid parameters
           self.step.resolve(
-            self.stepInitialPrompt("Error", "Invalid username or password")
+            self.stepInitialPrompt("Error", "Invalid parameters")
           );
           return;
         }
 
         let responseBody = await response.json();
-        let host = responseBody.data.ip;
         let user = responseBody.data.username;
         let otp = responseBody.data.key;
+        let host = r.host;
         self.hasStarted = true;
 
         self.streams.request(COMMAND_ID, (sd) => {
@@ -647,7 +671,7 @@ class Wizard {
       () => {},
       command.fieldsWithPreset(
         initialFieldDef,
-        [{ name: "Username" }, { name: "Pwd" }],
+        [{ name: "Username" }, { name: "Pwd" }, { name: "Host" }],
         self.preset,
         (r) => {}
       )

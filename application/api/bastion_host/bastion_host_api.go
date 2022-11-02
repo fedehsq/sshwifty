@@ -24,8 +24,8 @@ func (t *Token) String() string {
 
 func SignIn() (*Token, error) {
 	rb, err := json.Marshal(map[string]string{
-		"username": "admin",
-		"password": "admin",
+		"username": config.Conf.Username,
+		"password": config.Conf.Password,
 	})
 	if err != nil {
 		return nil, err

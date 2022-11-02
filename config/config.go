@@ -3,7 +3,9 @@ package config
 import "github.com/spf13/viper"
 
 type Config struct {
-	VaultAddress         string `mapstructure:"VAULT_ADDRESS"`
+	VaultAddress string `mapstructure:"VAULT_ADDRESS"`
+	Username     string `mapstructure:"USERNAME"`
+	Password     string `mapstructure:"PASSWORD"`
 }
 
 var Conf *Config

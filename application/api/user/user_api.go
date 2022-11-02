@@ -3,25 +3,22 @@ package userapi
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nirui/sshwifty/application/api/bastion_host"
+	"github.com/nirui/sshwifty/config"
 	"io"
 	"net/http"
 	"strings"
-	"github.com/nirui/sshwifty/application/api/bastion_host"
-	"github.com/nirui/sshwifty/config"
 )
 
 type UserRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Host     string `json:"host"`
 }
 
 type UserResponse struct {
 	Auth struct {
 		ClientToken string `json:"client_token"`
-		Metadata    struct {
-			Username string `json:"username"`
-			Host     string `json:"host"`
-		} `json:"metadata"`
 	} `json:"auth"`
 }
 
@@ -59,8 +56,8 @@ func (u *UserRequest) signin(bhToken string, jwt string) (*UserResponse, error) 
 	return user, err
 }
 
-func (u *UserResponse) getSshOtp() (*SshOtp, error) {
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/ssh/creds/otp_key_role", config.Conf.VaultAddress), strings.NewReader(fmt.Sprintf(`{"ip":"%s"}`, u.Auth.Metadata.Host)))
+func (u *UserResponse) getSshOtp(host string) (*SshOtp, error) {
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/ssh/creds/otp_key_role", config.Conf.VaultAddress), strings.NewReader(fmt.Sprintf(`{"ip":"%s"}`, host)))
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +98,7 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// User has now the token to request the SSH OTP: request the SSH OTP
-	sshOtp, err := user.getSshOtp()
+	sshOtp, err := user.getSshOtp(userReq.Host)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
