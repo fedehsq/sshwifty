@@ -18,15 +18,44 @@ type Token struct {
 	} `json:"auth"`
 }
 
+type Credentials struct {
+	Data struct {
+		Data struct {
+			Password string `json:"password"`
+			Username string `json:"username"`
+		} `json:"data"`
+	} `json:"data"`
+} 
+
 func (t *Token) String() string {
 	return fmt.Sprintf("client_token: %s, jwt: %s", t.Auth.ClientToken, t.Auth.Jwt.Token)
 }
 
+// Get the credentials from the vault of the bastion host
+func getCredentials(token string) (*Credentials, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/secret/data/bastion", config.Conf.VaultAddress), nil)
+	if err != nil {
+		return nil, err
+	}
+	body, err := doRequest(req, token)
+	if err != nil {
+		return nil, err
+	}
+	credentials := Credentials{}
+	err = json.Unmarshal(body, &credentials)
+	if err != nil {
+		return nil, err
+	}
+	return &credentials, nil
+}
+
+// Bastion host authentication with vault
 func SignIn() (*Token, error) {
-	rb, err := json.Marshal(map[string]string{
-		"username": config.Conf.Username,
-		"password": config.Conf.Password,
-	})
+	credentials, err := getCredentials(config.Conf.Token)
+	if err != nil {
+		return nil, err
+	}
+	rb, err := json.Marshal(credentials.Data.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +63,7 @@ func SignIn() (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := doRequest(req)
+	body, err := doRequest(req, "")
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +75,8 @@ func SignIn() (*Token, error) {
 	return &tokens, nil
 }
 
-func doRequest(req *http.Request) ([]byte, error) {
+func doRequest(req *http.Request, vaultToken string) ([]byte, error) {
+	req.Header.Set("X-Vault-Token", vaultToken)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
