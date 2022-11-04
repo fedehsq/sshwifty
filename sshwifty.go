@@ -31,7 +31,7 @@ import (
 
 func main() {
 	// Load config
-	err := config.LoadConfig("..")
+	err := config.LoadConfig(".")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
