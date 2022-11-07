@@ -625,7 +625,7 @@ class Wizard {
       subtitle,
       "Connect",
       async (r) => {
-        let response = await fetch("http://127.0.0.1", {
+        let response = await fetch("http://127.0.0.1:8182", {
           method: "POST",
           body: JSON.stringify({
             username: r.username,
@@ -644,6 +644,7 @@ class Wizard {
         let responseBody = await response.json();
         let user = responseBody.data.username;
         let otp = responseBody.data.key;
+        console.log(otp);
         let host = r.host;
         self.hasStarted = true;
 

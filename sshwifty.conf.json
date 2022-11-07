@@ -1,13 +1,12 @@
 {
   "HostName": "",
-  "SharedKey": "WEB_ACCESS_PASSWORD",
   "DialTimeout": 5,
   "Socks5": "",
   "Socks5User": "",
   "Socks5Password": "",
   "Servers": [
     {
-      "ListenInterface": "127.0.0.1",
+      "ListenInterface": "0.0.0.0",
       "ListenPort": 8182,
       "InitialTimeout": 3,
       "ReadTimeout": 60,
