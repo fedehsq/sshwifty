@@ -8,6 +8,7 @@ ENV PATH $PATH:/usr/local/go/bin
 RUN mkdir /sshwifty
 WORKDIR /sshwifty
 COPY . .
+ADD .env.docker .env
 RUN go get -d -v ./...
 #RUN npm config set unsafe-perm true
 RUN npm install
