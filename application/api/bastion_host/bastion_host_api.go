@@ -59,7 +59,7 @@ func SignIn() (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/auth/auth-plugin/admin/singin", config.Conf.VaultAddress), strings.NewReader(string(rb)))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/auth/auth-plugin/admin/signin", config.Conf.VaultAddress), strings.NewReader(string(rb)))
 	if err != nil {
 		return nil, err
 	}
