@@ -37,7 +37,7 @@ func (u *UserRequest) signin(bhToken string, jwt string) (*UserResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/auth/auth-plugin/user-login", config.Conf.VaultAddress), strings.NewReader(string(rb)))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/auth/auth-plugin/user/signin", config.Conf.VaultAddress), strings.NewReader(string(rb)))
 	if err != nil {
 		return nil, err
 	}
