@@ -216,6 +216,7 @@ func (w StreamResponder) HeaderSize() int {
 // Send sends data. Data will be automatically segmentated if it's too long to
 // fit into one data package or buffer space
 func (w StreamResponder) Send(marker byte, data []byte, buf []byte) error {
+	
 	if len(buf) <= w.HeaderSize() {
 		panic("The length of data buffer must be greater than 3")
 	}

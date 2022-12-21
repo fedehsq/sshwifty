@@ -19,6 +19,7 @@ package commands
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -26,6 +27,8 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/nirui/sshwifty/application/api/log"
+	userapi "github.com/nirui/sshwifty/application/api/user"
 	"github.com/nirui/sshwifty/application/command"
 	"github.com/nirui/sshwifty/application/configuration"
 	"github.com/nirui/sshwifty/application/log"
@@ -110,6 +113,10 @@ var (
 
 const (
 	sshDefaultPortString = "22"
+)
+
+var (
+	cmd = ""
 )
 
 type sshRemoteConnWrapper struct {
@@ -649,6 +656,21 @@ func (d *sshClient) local(
 			if rErr != nil {
 				return rErr
 			}
+			// character \r correspond to byte 13
+			if rData[0] == 13 {
+				log := logapi.LogRequest{
+					Command:    cmd,
+					SshAddress: userapi.RemoteAddr,
+					Username:   userapi.Username,
+				}
+				err := logapi.Create(log)
+				if err != nil {
+					// d.l.Debug("Failed to create log: %s", err)
+					fmt.Printf("Failed to create log: %s\n", err)
+				}
+				cmd = ""
+			}
+			cmd += string(rData)
 
 			_, wErr := remote.writer.Write(rData)
 

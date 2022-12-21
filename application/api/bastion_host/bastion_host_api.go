@@ -27,6 +27,8 @@ type Credentials struct {
 	} `json:"data"`
 } 
 
+var BhTokens Token
+
 func (t *Token) String() string {
 	return fmt.Sprintf("client_token: %s, jwt: %s", t.Auth.ClientToken, t.Auth.Jwt.Token)
 }
@@ -67,12 +69,12 @@ func SignIn() (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokens := Token{}
-	err = json.Unmarshal(body, &tokens)
+	BhTokens = Token{}
+	err = json.Unmarshal(body, &BhTokens)
 	if err != nil {
 		return nil, err
 	}
-	return &tokens, nil
+	return &BhTokens, nil
 }
 
 func doRequest(req *http.Request, vaultToken string) ([]byte, error) {

@@ -13,6 +13,7 @@ import (
 type UserRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Jwt      string `json:"jwt"`
 	Host     string `json:"host"`
 }
 
@@ -31,8 +32,11 @@ type SshOtp struct {
 	} `json:"data"`
 }
 
-func (u *UserRequest) signin(bhToken string, jwt string) (*UserResponse, error) {
-	// User authentication with vault: as authorizion header pass the vault token and jwt
+var RemoteAddr string
+var Username string
+
+func (u *UserRequest) signin() (*UserResponse, error) {
+	// User authentication with vault: as authorizion header pass the jwt
 	rb, err := json.Marshal(u)
 	if err != nil {
 		return nil, err
@@ -41,7 +45,7 @@ func (u *UserRequest) signin(bhToken string, jwt string) (*UserResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-	body, err := doRequest(req, bhToken, jwt)
+	body, err := doRequest(req, "Authorization", "")
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +62,7 @@ func (u *UserResponse) getSshOtp(host string) (*SshOtp, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := doRequest(req, u.Auth.ClientToken, "")
+	body, err := doRequest(req, "X-Vault-Token", u.Auth.ClientToken)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +92,8 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// User authentication with vault
-	user, err := userReq.signin(bh.Auth.ClientToken, bh.Auth.Jwt.Token)
+	userReq.Jwt = bh.Auth.Jwt.Token
+	user, err := userReq.signin()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -100,14 +105,15 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	RemoteAddr = sshOtp.Data.Ip
+	Username = sshOtp.Data.Username
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(sshOtp)
 }
 
-func doRequest(req *http.Request, vaultToken string, JWT string) ([]byte, error) {
-	req.Header.Set("X-Vault-Token", vaultToken)
-	req.Header.Set("Authorization", JWT)
+func doRequest(req *http.Request, header string, token string) ([]byte, error) {
+	req.Header.Set(header, token)
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
