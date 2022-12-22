@@ -45,7 +45,7 @@ func doRequest(req *http.Request, vaultToken string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("status: %d, body: %s", res.StatusCode, body)
 	}
 	return body, err

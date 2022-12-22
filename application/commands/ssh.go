@@ -665,12 +665,20 @@ func (d *sshClient) local(
 				}
 				err := logapi.Create(log)
 				if err != nil {
-					// d.l.Debug("Failed to create log: %s", err)
+					d.l.Debug("Failed to create log: %s\n", err)
 					fmt.Printf("Failed to create log: %s\n", err)
 				}
 				cmd = ""
+				// delete correspond to byte 127
+			} else if rData[0] == 127 {
+				if len(cmd) > 0 {
+					cmd = cmd[:len(cmd)-1]
+				} else {
+					cmd = ""
+				}
+			} else {
+				cmd += string(rData)
 			}
-			cmd += string(rData)
 
 			_, wErr := remote.writer.Write(rData)
 
