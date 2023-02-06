@@ -25,7 +25,14 @@ type Credentials struct {
 			Username string `json:"username"`
 		} `json:"data"`
 	} `json:"data"`
-} 
+}
+
+type RemoteHostUserResp struct {
+	Data struct {
+		Username     string `json:"username"`
+		RemoteHostIp string `json:"remote_host_ip"`
+	} `json:"data"`
+}
 
 var BhTokens Token
 
@@ -49,6 +56,24 @@ func getCredentials(token string) (*Credentials, error) {
 		return nil, err
 	}
 	return &credentials, nil
+}
+
+func CheckUserRemoteHost(username string, remoteHost string) (bool, error) {
+	// Check if the remote host is allowed for the user
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/auth/auth-plugin/remote-host-users?ip=%s&username=%s", config.Conf.VaultAddress, remoteHost, username), nil)
+	if err != nil {
+		return false, err
+	}
+	body, err := doRequest(req, BhTokens.Auth.ClientToken)
+	if err != nil {
+		return false, err
+	}
+	remoteHostUser := RemoteHostUserResp{}
+	err = json.Unmarshal(body, &remoteHostUser)
+	if err != nil {
+		return false, err
+	}
+	return remoteHostUser.Data.Username == username && remoteHostUser.Data.RemoteHostIp == remoteHost, nil
 }
 
 // Bastion host authentication with vault
