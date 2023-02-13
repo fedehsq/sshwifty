@@ -91,6 +91,13 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// User authentication with vault
+	userReq.Jwt = bh.Auth.Jwt.Token
+	user, err := userReq.signin()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// Check if the username is allowed to connect to the host
 	ok, err := bastionhostapi.CheckUserRemoteHost(userReq.Username, userReq.Host)
@@ -100,14 +107,6 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 	}
 	if !ok {
 		http.Error(w, "User not allowed to connect to the host", http.StatusBadRequest)
-		return
-	}
-
-	// User authentication with vault
-	userReq.Jwt = bh.Auth.Jwt.Token
-	user, err := userReq.signin()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
